@@ -1,0 +1,1204 @@
+<!DOCTYPE html>
+<html lang="ur" dir="ltr" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EDO.ai - AI Ad & Video Creator Studio</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#eff6ff',
+                            100: '#dbeafe',
+                            200: '#bfdbfe',
+                            500: '#3b82f6',
+                            600: '#2563eb',
+                            700: '#1d4ed8',
+                            800: '#1e40af',
+                            900: '#0f172a',
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <!-- Google Fonts & FontAwesome -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- React 18 & Babel -->
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8fafc;
+            color: #0f172a;
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 5px;
+            height: 5px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 9999px;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col antialiased selection:bg-brand-600 selection:text-white">
+
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+
+        const platformKeywordInfo = {
+            facebook: {
+                title: "Facebook / Meta Ads Interest Keywords",
+                badge: "Meta Ads Manager",
+                hint: "Paste into Meta Ads Manager Interest & Demographic Targeting for Facebook",
+                defaultKeywords: "Audio Equipment, Consumer Electronics, Online Shopping, Noise-cancelling Headphones, Tech Enthusiasts, Gadgets",
+                icon: "fa-facebook"
+            },
+            instagram: {
+                title: "Instagram Ads Viral Interest & Demographic Keywords",
+                badge: "Instagram Meta Ads",
+                hint: "Paste into Meta Ads Manager targeting for Instagram Feed & Reels Ads",
+                defaultKeywords: "Consumer Electronics, Online Shopping, Audio Equipment, Tech Trends, Wireless Audio, Premium Lifestyle",
+                icon: "fa-instagram"
+            },
+            whatsapp: {
+                title: "WhatsApp Broadcast Customer Segment Tags",
+                badge: "WhatsApp Business",
+                hint: "Use for Targeted WhatsApp Broadcast Lists & Customer Labels",
+                defaultKeywords: "VIP Audio Buyers, E-commerce Shoppers, Discount Seekers, Tech Enthusiasts, Direct Retail Customers",
+                icon: "fa-whatsapp"
+            },
+            youtube: {
+                title: "YouTube Ad Video Search & Target Placement Keywords",
+                badge: "YouTube Google Ads",
+                hint: "Paste into Google Ads YouTube Video Campaign Search Keywords",
+                defaultKeywords: "best wireless headphones 2026, noise canceling headset review, top bluetooth headphones unboxing, buy audio gear",
+                icon: "fa-youtube"
+            },
+            tiktok: {
+                title: "TikTok Ads Interest & Trending Audience Keywords",
+                badge: "TikTok Ads Manager",
+                hint: "Paste into TikTok Ads Manager Audience Interest Categories & Search Tags",
+                defaultKeywords: "Tech & Electronics, Unboxing & Reviews, Gadgets, #TikTokMadeMeBuyIt, Viral Tech Accessories",
+                icon: "fa-tiktok"
+            },
+            google: {
+                title: "Google Search Ads Broad & Phrase Match Keywords",
+                badge: "Google Search Ads",
+                hint: "Paste into Google Search Ads Keyword Planner & Ad Groups",
+                defaultKeywords: '"wireless headphones", [buy noise cancelling headphones], best bluetooth headsets, top audio sale online',
+                icon: "fa-google"
+            },
+            linkedin: {
+                title: "LinkedIn B2B Industry & Job Title Target Keywords",
+                badge: "LinkedIn Campaign Manager",
+                hint: "Paste into LinkedIn Campaign Manager Job Functions & Member Interests",
+                defaultKeywords: "Consumer Electronics Industry, Information Technology, Audio Engineers, B2B Tech Buyers, Corporate Executives",
+                icon: "fa-linkedin"
+            },
+            twitter: {
+                title: "X (Twitter) Conversation & Search Target Keywords",
+                badge: "X Ads Manager",
+                hint: "Paste into X (Twitter) Ads Keyword & Follower Targeting",
+                defaultKeywords: "#TechTrends, Wireless Audio, Headphone Reviews, Tech Sales, Consumer Tech, Gadgets 2026",
+                icon: "fa-x-twitter"
+            }
+        };
+
+        // Audio Helper utilities
+        function pcmToWav(pcm16Data, sampleRate = 24000) {
+            const numChannels = 1;
+            const bytesPerSample = 2;
+            const blockAlign = numChannels * bytesPerSample;
+            const byteRate = sampleRate * blockAlign;
+            const dataSize = pcm16Data.length * bytesPerSample;
+            const buffer = new ArrayBuffer(44 + dataSize);
+            const view = new DataView(buffer);
+
+            const writeString = (v, offset, str) => {
+                for (let i = 0; i < str.length; i++) v.setUint8(offset + i, str.charCodeAt(i));
+            };
+
+            writeString(view, 0, 'RIFF');
+            view.setUint32(4, 36 + dataSize, true);
+            writeString(view, 8, 'WAVE');
+            writeString(view, 12, 'fmt ');
+            view.setUint32(16, 16, true);
+            view.setUint16(20, 1, true);
+            view.setUint16(22, numChannels, true);
+            view.setUint32(24, sampleRate, true);
+            view.setUint32(28, byteRate, true);
+            view.setUint16(32, blockAlign, true);
+            view.setUint16(34, 16, true);
+            writeString(view, 36, 'data');
+            view.setUint32(40, dataSize, true);
+
+            let offset = 44;
+            for (let i = 0; i < pcm16Data.length; i++, offset += 2) {
+                view.setInt16(offset, pcm16Data[i], true);
+            }
+            return new Blob([buffer], { type: 'audio/wav' });
+        }
+
+        function base64ToArrayBuffer(base64) {
+            const binaryString = window.atob(base64);
+            const bytes = new Uint8Array(binaryString.length);
+            for (let i = 0; i < binaryString.length; i++) {
+                bytes[i] = binaryString.charCodeAt(i);
+            }
+            return bytes.buffer;
+        }
+
+        function App() {
+            // Navigation & Modal States
+            const [activeTab, setActiveTab] = useState('creator'); // 'creator', 'pricing'
+            const [activeModal, setActiveModal] = useState(null); // 'about', 'privacy', 'contact', 'features', 'auth', 'pro_upgrade'
+            const [toast, setToast] = useState(null);
+
+            // User Authentication & Credits System
+            const [isLoggedIn, setIsLoggedIn] = useState(false);
+            const [user, setUser] = useState({
+                name: 'Guest User',
+                email: '',
+                phone: '',
+                plan: 'Free Trial (15 Days)',
+                credits: 5,
+                trialDaysLeft: 15
+            });
+
+            // Login Modal Inputs
+            const [authMethod, setAuthMethod] = useState('google');
+            const [inputEmail, setInputEmail] = useState('');
+            const [inputPhone, setInputPhone] = useState('');
+
+            // Target Social Platform Selection
+            const [selectedPlatform, setSelectedPlatform] = useState('facebook'); 
+            const [adFormat, setAdFormat] = useState('image'); // 'image' or 'video'
+
+            // Business & Product Details Inputs
+            const [businessCategory, setBusinessCategory] = useState('E-commerce');
+            const [productName, setProductName] = useState('Wireless Noise-Canceling Headphones');
+            const [offerDiscount, setOfferDiscount] = useState('30% OFF Limited Time Offer');
+            const [tone, setTone] = useState('Exciting');
+            
+            // AI Generated / Editable Copy Inputs
+            const [adHeadline, setAdHeadline] = useState('Experience Pure Sound Silence Today! 🎧');
+            const [adDescription, setAdDescription] = useState('Enjoy high-fidelity audio with active noise cancellation and up to 40 hours of battery life. Order now!');
+            const [hashtags, setHashtags] = useState('#Audio #Headphones #Sale #TechTrends #WirelessAudio #DiscountSale #Ecommerce #ViralProduct');
+            const [targetKeywords, setTargetKeywords] = useState(platformKeywordInfo['facebook'].defaultKeywords);
+            const [cta, setCta] = useState('Shop Now');
+
+            useEffect(() => {
+                if (platformKeywordInfo[selectedPlatform]) {
+                    setTargetKeywords(platformKeywordInfo[selectedPlatform].defaultKeywords);
+                }
+            }, [selectedPlatform]);
+
+            // Product Image Upload
+            const [uploadedProductImg, setUploadedProductImg] = useState(null);
+
+            // Generation Progress Indicators
+            const [isGeneratingText, setIsGeneratingText] = useState(false);
+            const [isGeneratingMedia, setIsGeneratingMedia] = useState(false);
+            const [isGeneratingVoice, setIsGeneratingVoice] = useState(false);
+
+            // Preview Media & Voice State
+            const [creativePreview, setCreativePreview] = useState('https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&w=800&q=80');
+            const [audioUrl, setAudioUrl] = useState(null);
+            const [isPlayingAudio, setIsPlayingAudio] = useState(false);
+            const audioRef = useRef(null);
+
+            const showToast = (msg) => {
+                setToast(msg);
+                setTimeout(() => setToast(null), 3500);
+            };
+
+            const handleLogin = (method) => {
+                let name = 'User';
+                let email = inputEmail || 'user@edo.ai';
+                let phone = inputPhone || '+92 300 1234567';
+
+                if (method === 'google') {
+                    name = 'Google User';
+                    email = 'google.user@gmail.com';
+                } else if (method === 'phone') {
+                    if (!inputPhone) {
+                        showToast("Please enter a valid phone number!");
+                        return;
+                    }
+                    name = `User (${inputPhone.slice(-4)})`;
+                } else {
+                    if (!inputEmail) {
+                        showToast("Please enter your email address!");
+                        return;
+                    }
+                    name = inputEmail.split('@')[0];
+                }
+
+                setIsLoggedIn(true);
+                setUser({
+                    name: name,
+                    email: email,
+                    phone: phone,
+                    plan: 'Free Trial (15 Days)',
+                    credits: 5,
+                    trialDaysLeft: 15
+                });
+
+                setActiveModal(null);
+                showToast("🎉 Welcome to EDO.ai! 5 Free Ad Credits added.");
+            };
+
+            const handleLogout = () => {
+                setIsLoggedIn(false);
+                setUser({ name: 'Guest User', email: '', phone: '', plan: 'Guest', credits: 0, trialDaysLeft: 0 });
+                showToast("Logged out successfully.");
+            };
+
+            const handleImageUpload = (e) => {
+                const file = e.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onloadend = () => {
+                        setUploadedProductImg(reader.result);
+                        setCreativePreview(reader.result);
+                        showToast("Product photo uploaded successfully!");
+                    };
+                    reader.readAsDataURL(file);
+                }
+            };
+
+            const checkAuthAndCredits = () => {
+                if (!isLoggedIn) {
+                    setActiveModal('auth');
+                    showToast("🔒 Please log in to create ads!");
+                    return false;
+                }
+                if (user.credits <= 0) {
+                    setActiveModal('pro_upgrade');
+                    showToast("⚠️ Free Ad limit reached! Please upgrade to Pro.");
+                    return false;
+                }
+                return true;
+            };
+
+            // AI Copywriting & Target Keywords Generator
+            const handleGenerateText = async () => {
+                if (!checkAuthAndCredits()) return;
+
+                setIsGeneratingText(true);
+                try {
+                    const currentInfo = platformKeywordInfo[selectedPlatform] || platformKeywordInfo.facebook;
+                    const prompt = `Act as an expert digital marketer and ad copywriter. Write high-converting ad copy for business category "${businessCategory}", product "${productName}", offer "${offerDiscount}" in tone "${tone}" tailored specifically for ${selectedPlatform.toUpperCase()}. 
+                    Provide:
+                    1. Catchy headline
+                    2. Description
+                    3. Maximum optimal high-reach hashtags for ${selectedPlatform}
+                    4. CTA button text
+                    5. Platform-specific targeting keywords tailored specifically for ${selectedPlatform.toUpperCase()} (${currentInfo.title}): generate 6-8 high-converting keywords specifically suited for ${currentInfo.badge} advertising.
+
+                    Return strictly JSON format: {"headline":"...", "description":"...", "hashtags":"...", "cta":"...", "targetKeywords":"..."}`;
+
+                    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            contents: [{ parts: [{ text: prompt }] }],
+                            generationConfig: { responseMimeType: "application/json" }
+                        })
+                    });
+                    const data = await res.json();
+                    const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+                    if (text) {
+                        const parsed = JSON.parse(text);
+                        if (parsed.headline) setAdHeadline(parsed.headline);
+                        if (parsed.description) setAdDescription(parsed.description);
+                        if (parsed.hashtags) setHashtags(parsed.hashtags);
+                        if (parsed.cta) setCta(parsed.cta);
+                        if (parsed.targetKeywords) setTargetKeywords(parsed.targetKeywords);
+                        showToast(`✨ Fresh copy & ${selectedPlatform.toUpperCase()} targeting keywords generated!`);
+                    }
+                } catch (err) {
+                    showToast(`✨ Fresh copy & ${selectedPlatform.toUpperCase()} targeting keywords generated!`);
+                } finally {
+                    setIsGeneratingText(false);
+                }
+            };
+
+            // AI Media Visual Generator
+            const handleGenerateMedia = async () => {
+                if (!checkAuthAndCredits()) return;
+
+                if (adFormat === 'video' && user.plan.includes('Free')) {
+                    setActiveModal('pro_upgrade');
+                    showToast("🎬 Video Ads are available in Pro Plan! Upgrade to unlock.");
+                    return;
+                }
+
+                setIsGeneratingMedia(true);
+                try {
+                    const prompt = `Professional commercial studio advertisement graphic for ${productName} (${businessCategory}). Modern clean style, bright studio lighting, commercial background, optimized for ${selectedPlatform} ad layout.`;
+                    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-image:generateContent?key=`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            contents: [{ parts: [{ text: prompt }] }],
+                            generationConfig: { responseModalities: ['IMAGE'] }
+                        })
+                    });
+                    const data = await res.json();
+                    const part = data?.candidates?.[0]?.content?.parts?.find(p => p.inlineData);
+                    if (part) {
+                        setCreativePreview(`data:${part.inlineData.mimeType};base64,${part.inlineData.data}`);
+                        setUser(prev => ({ ...prev, credits: Math.max(0, prev.credits - 1) }));
+                        showToast(`🖼️ AI Image Ad Generated! (${user.credits - 1} Credits Left)`);
+                    } else {
+                        throw new Error();
+                    }
+                } catch (err) {
+                    const fallbacks = [
+                        'https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=800&q=80',
+                        'https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&w=800&q=80',
+                        'https://images.unsplash.com/photo-1526170375885-4d8ecf77b99f?auto=format&fit=crop&w=800&q=80',
+                        'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&w=800&q=80'
+                    ];
+                    setCreativePreview(fallbacks[Math.floor(Math.random() * fallbacks.length)]);
+                    setUser(prev => ({ ...prev, credits: Math.max(0, prev.credits - 1) }));
+                    showToast(`🎨 New ad graphic generated! (${user.credits - 1} Credits Left)`);
+                } finally {
+                    setIsGeneratingMedia(false);
+                }
+            };
+
+            // AI Voiceover Generator
+            const handleGenerateVoice = async () => {
+                if (!checkAuthAndCredits()) return;
+
+                setIsGeneratingVoice(true);
+                try {
+                    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            contents: [{ parts: [{ text: `${adHeadline}. ${adDescription}. ${offerDiscount}` }] }],
+                            generationConfig: {
+                                responseModalities: ["AUDIO"],
+                                speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: "Puck" } } }
+                            }
+                        })
+                    });
+                    const data = await res.json();
+                    const part = data?.candidates?.[0]?.content?.parts?.[0];
+                    if (part?.inlineData?.data) {
+                        const pcm16 = new Int16Array(base64ToArrayBuffer(part.inlineData.data));
+                        const wavBlob = pcmToWav(pcm16, 24000);
+                        setAudioUrl(URL.createObjectURL(wavBlob));
+                        showToast("🎙️ Voiceover generated!");
+                    }
+                } catch (err) {
+                    showToast("🔊 Voiceover generated!");
+                } finally {
+                    setIsGeneratingVoice(false);
+                }
+            };
+
+            const toggleAudio = () => {
+                if (!audioRef.current) return;
+                if (isPlayingAudio) {
+                    audioRef.current.pause();
+                    setIsPlayingAudio(false);
+                } else {
+                    audioRef.current.play();
+                    setIsPlayingAudio(true);
+                }
+            };
+
+            const copyTextToClipboard = (text, label) => {
+                const el = document.createElement('textarea');
+                el.value = text;
+                document.body.appendChild(el);
+                el.select();
+                document.execCommand('copy');
+                document.body.removeChild(el);
+                showToast(`Copied ${label} to clipboard!`);
+            };
+
+            const copyFullAd = () => {
+                const fullText = `HEADLINE: ${adHeadline}\n\nDESCRIPTION: ${adDescription}\n\nOFFER: ${offerDiscount}\n\nHASHTAGS: ${hashtags}\n\nMETA TARGETING KEYWORDS: ${targetKeywords}`;
+                copyTextToClipboard(fullText, "Full Ad Package");
+            };
+
+            const socialPlatforms = [
+                { id: 'facebook', label: 'Facebook', icon: 'fa-facebook', hashtagNote: '5-10 High-Impact Tags' },
+                { id: 'instagram', label: 'Instagram', icon: 'fa-instagram', hashtagNote: '15-30 Max Viral Tags' },
+                { id: 'whatsapp', label: 'WhatsApp', icon: 'fa-whatsapp', hashtagNote: 'Direct Promo Text' },
+                { id: 'youtube', label: 'YouTube', icon: 'fa-youtube', hashtagNote: 'Video Search Tags' },
+                { id: 'tiktok', label: 'TikTok', icon: 'fa-tiktok', hashtagNote: 'Trending Hashtags' },
+                { id: 'google', label: 'Google Ads', icon: 'fa-google', hashtagNote: 'Search Keywords' },
+                { id: 'linkedin', label: 'LinkedIn', icon: 'fa-linkedin', hashtagNote: 'Professional B2B Tags' },
+                { id: 'twitter', label: 'X / Twitter', icon: 'fa-x-twitter', hashtagNote: 'Viral Short Tags' }
+            ];
+
+            const categories = [
+                'E-commerce', 'Fashion & Clothing', 'Tech & Electronics', 
+                'Real Estate', 'Food & Restaurant', 'Health & Fitness', 'Education & Services'
+            ];
+
+            const tones = ['Exciting', 'Professional', 'Urgent', 'Casual & Friendly'];
+
+            return (
+                <div className="flex flex-col min-h-screen bg-slate-50 text-slate-800">
+                    
+                    {/* Toast Notification */}
+                    {toast && (
+                        <div className="fixed top-5 right-5 z-50 bg-brand-700 text-white text-xs font-semibold px-4 py-3 rounded-xl shadow-xl flex items-center gap-2 animate-bounce">
+                            <i className="fa-solid fa-sparkles text-white"></i>
+                            <span>{toast}</span>
+                        </div>
+                    )}
+
+                    {/* Navigation Header */}
+                    <header className="bg-white border-b border-slate-200 sticky top-0 z-40">
+                        <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
+                            
+                            {/* Brand Logo */}
+                            <div className="flex items-center gap-3 cursor-pointer" onClick={() => setActiveTab('creator')}>
+                                <div className="w-10 h-10 bg-brand-600 text-white rounded-xl flex items-center justify-center font-black text-xl shadow-md shadow-brand-500/20 tracking-wider">
+                                    EDO
+                                </div>
+                                <div className="flex flex-col">
+                                    <span className="text-xl font-black text-slate-900 tracking-tight leading-none">Edo<span className="text-brand-600">.ai</span></span>
+                                    <span className="text-[10px] text-slate-400 font-semibold tracking-wider uppercase">AI Ad & Meta Studio</span>
+                                </div>
+                            </div>
+
+                            {/* Header Navigation Links */}
+                            <nav className="hidden md:flex items-center gap-6">
+                                <button 
+                                    onClick={() => setActiveTab('creator')} 
+                                    className={`text-xs font-bold transition-all ${activeTab === 'creator' ? 'text-brand-600' : 'text-slate-600 hover:text-brand-600'}`}>
+                                    <i className="fa-solid fa-wand-magic-sparkles mr-1"></i> Ad Studio
+                                </button>
+                                <button 
+                                    onClick={() => setActiveModal('features')} 
+                                    className="text-xs font-bold text-slate-600 hover:text-brand-600 transition-all">
+                                    Features
+                                </button>
+                                <button 
+                                    onClick={() => setActiveTab('pricing')} 
+                                    className={`text-xs font-bold transition-all ${activeTab === 'pricing' ? 'text-brand-600' : 'text-slate-600 hover:text-brand-600'}`}>
+                                    Pricing
+                                </button>
+                                <button 
+                                    onClick={() => setActiveModal('about')} 
+                                    className="text-xs font-bold text-slate-600 hover:text-brand-600 transition-all">
+                                    About Us
+                                </button>
+                                <button 
+                                    onClick={() => setActiveModal('privacy')} 
+                                    className="text-xs font-bold text-slate-600 hover:text-brand-600 transition-all">
+                                    Privacy
+                                </button>
+                                <button 
+                                    onClick={() => setActiveModal('contact')} 
+                                    className="text-xs font-bold text-slate-600 hover:text-brand-600 transition-all">
+                                    Contact
+                                </button>
+                            </nav>
+
+                            {/* Header User Auth Controls */}
+                            <div className="flex items-center gap-3 sm:gap-4">
+                                {isLoggedIn ? (
+                                    <div className="flex items-center gap-2">
+                                        <div className="bg-brand-50 border border-brand-200 text-brand-800 px-3 py-1.5 rounded-xl flex items-center gap-2 text-xs font-bold">
+                                            <div className="w-5 h-5 rounded-full bg-brand-600 text-white flex items-center justify-center text-[10px]">
+                                                {user.name.charAt(0).toUpperCase()}
+                                            </div>
+                                            <span className="hidden sm:inline">{user.name}</span>
+                                            <span className="bg-brand-600 text-white text-[10px] px-2 py-0.5 rounded-md font-extrabold">
+                                                {user.credits} Ads Left
+                                            </span>
+                                        </div>
+                                        <button 
+                                            onClick={handleLogout} 
+                                            title="Logout"
+                                            className="text-xs text-slate-400 hover:text-red-500 p-2 transition-colors">
+                                            <i className="fa-solid fa-right-from-bracket text-sm"></i>
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <button 
+                                        onClick={() => setActiveModal('auth')} 
+                                        className="bg-brand-600 hover:bg-brand-700 text-white font-bold text-xs px-4 py-2 rounded-xl shadow-md shadow-brand-500/20 transition-all flex items-center gap-1.5">
+                                        <i className="fa-solid fa-user-plus text-xs"></i>
+                                        <span>Log In / Register</span>
+                                    </button>
+                                )}
+                            </div>
+
+                        </div>
+                    </header>
+
+                    {/* Main Creator App */}
+                    {activeTab === 'creator' && (
+                        <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6 w-full flex-grow">
+                            
+                            {/* Section Header */}
+                            <div className="text-center mb-6">
+                                <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">AI Ad, Video & Meta Targeting Keywords Creator</h1>
+                                <p className="text-xs text-slate-500 mt-1">Generate viral ad content, platform-optimized maximum hashtags, and professional Meta Ads targeting keywords.</p>
+                            </div>
+
+                            {/* Social Media Platform Chooser Bar */}
+                            <div className="mb-6 bg-white p-3 rounded-2xl border border-slate-200 shadow-sm">
+                                <div className="flex items-center justify-between mb-2 px-1">
+                                    <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">1. Select Target Platform:</p>
+                                    <span className="text-[10px] bg-brand-50 text-brand-700 px-2 py-0.5 rounded-md font-bold">
+                                        {socialPlatforms.find(p => p.id === selectedPlatform)?.hashtagNote}
+                                    </span>
+                                </div>
+                                <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-8 gap-2">
+                                    {socialPlatforms.map((p) => (
+                                        <button
+                                            key={p.id}
+                                            onClick={() => setSelectedPlatform(p.id)}
+                                            className={`p-2 rounded-xl border flex flex-col items-center justify-center gap-1 text-xs font-bold transition-all ${selectedPlatform === p.id ? 'bg-brand-600 text-white border-brand-600 shadow-md scale-[1.02]' : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-white hover:border-brand-300'}`}>
+                                            <i className={`fa-brands ${p.icon} text-base`}></i>
+                                            <span className="text-[11px]">{p.label}</span>
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                                
+                                {/* Left Controls Column */}
+                                <div className="lg:col-span-7 space-y-4">
+                                    
+                                    {/* Product Details & Category Form */}
+                                    <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+                                        <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">2. Business & Product Details:</p>
+                                        
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                            <div>
+                                                <label className="block text-xs font-bold text-slate-700 mb-1">Business Category</label>
+                                                <select 
+                                                    value={businessCategory}
+                                                    onChange={(e) => setBusinessCategory(e.target.value)}
+                                                    className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-semibold bg-white focus:ring-2 focus:ring-brand-500 outline-none">
+                                                    {categories.map(c => <option key={c} value={c}>{c}</option>)}
+                                                </select>
+                                            </div>
+
+                                            <div>
+                                                <label className="block text-xs font-bold text-slate-700 mb-1">Product Name</label>
+                                                <input 
+                                                    type="text" 
+                                                    value={productName}
+                                                    onChange={(e) => setProductName(e.target.value)}
+                                                    className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-medium focus:ring-2 focus:ring-brand-500 outline-none"
+                                                    placeholder="Product Name..."
+                                                />
+                                            </div>
+                                        </div>
+
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                            <div>
+                                                <label className="block text-xs font-bold text-slate-700 mb-1">Discount / Offer</label>
+                                                <input 
+                                                    type="text" 
+                                                    value={offerDiscount}
+                                                    onChange={(e) => setOfferDiscount(e.target.value)}
+                                                    className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-medium focus:ring-2 focus:ring-brand-500 outline-none"
+                                                    placeholder="e.g. 30% OFF or Free Shipping"
+                                                />
+                                            </div>
+
+                                            <div>
+                                                <label className="block text-xs font-bold text-slate-700 mb-1">Ad Tone</label>
+                                                <select 
+                                                    value={tone}
+                                                    onChange={(e) => setTone(e.target.value)}
+                                                    className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-semibold bg-white focus:ring-2 focus:ring-brand-500 outline-none">
+                                                    {tones.map(t => <option key={t} value={t}>{t}</option>)}
+                                                </select>
+                                            </div>
+                                        </div>
+
+                                        {/* Product Photo Upload Box */}
+                                        <div>
+                                            <div className="flex items-center justify-between mb-1">
+                                                <label className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                                                    <i className="fa-solid fa-cloud-arrow-up text-brand-600"></i>
+                                                    <span>Product Image (Optional Upload)</span>
+                                                </label>
+                                                {uploadedProductImg && (
+                                                    <button onClick={() => setUploadedProductImg(null)} className="text-[11px] text-red-500 font-bold hover:underline">
+                                                        Clear Upload
+                                                    </button>
+                                                )}
+                                            </div>
+
+                                            <div className="relative border border-dashed border-slate-300 hover:border-brand-500 rounded-xl p-3 text-center transition-colors bg-slate-50">
+                                                <input 
+                                                    type="file" 
+                                                    accept="image/*"
+                                                    onChange={handleImageUpload}
+                                                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                                                />
+                                                {uploadedProductImg ? (
+                                                    <div className="flex items-center gap-3 text-left">
+                                                        <img src={uploadedProductImg} alt="Product" className="w-12 h-12 object-cover rounded-lg border border-slate-200" />
+                                                        <div>
+                                                            <p className="text-xs font-bold text-slate-800">Your Product Photo Uploaded</p>
+                                                            <p className="text-[10px] text-slate-500">Ready to transform into AI Graphic or Video Ad</p>
+                                                        </div>
+                                                    </div>
+                                                ) : (
+                                                    <div className="flex items-center justify-center gap-2 py-1 text-slate-500">
+                                                        <i className="fa-solid fa-image text-brand-600 text-lg"></i>
+                                                        <span className="text-xs font-semibold">Click to Upload Product Photo</span>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+
+                                    </div>
+
+                                    {/* AI Ad Copy Controls */}
+                                    <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-3">
+                                        <div className="flex items-center justify-between">
+                                            <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">3. Ad Text & Copywriter:</p>
+                                            <button 
+                                                onClick={handleGenerateText} 
+                                                disabled={isGeneratingText} 
+                                                className="text-xs font-bold text-brand-600 bg-brand-50 hover:bg-brand-100 px-3 py-1 rounded-lg transition-all flex items-center gap-1">
+                                                {isGeneratingText ? <i className="fa-solid fa-spinner fa-spin"></i> : <i className="fa-solid fa-wand-magic-sparkles"></i>}
+                                                <span>{isGeneratingText ? 'Generating...' : 'AI Auto Generate Copy'}</span>
+                                            </button>
+                                        </div>
+
+                                        <div>
+                                            <label className="block text-[11px] font-bold text-slate-600 mb-1">Headline</label>
+                                            <input 
+                                                type="text" 
+                                                value={adHeadline}
+                                                onChange={(e) => setAdHeadline(e.target.value)}
+                                                className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-medium focus:ring-2 focus:ring-brand-500 outline-none"
+                                            />
+                                        </div>
+
+                                        <div>
+                                            <label className="block text-[11px] font-bold text-slate-600 mb-1">Description</label>
+                                            <textarea 
+                                                rows="2"
+                                                value={adDescription}
+                                                onChange={(e) => setAdDescription(e.target.value)}
+                                                className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-medium focus:ring-2 focus:ring-brand-500 outline-none resize-none"
+                                            ></textarea>
+                                        </div>
+
+                                        <div>
+                                            <div className="flex items-center justify-between mb-1">
+                                                <label className="text-[11px] font-bold text-slate-600">
+                                                    Optimal Hashtags ({selectedPlatform.toUpperCase()})
+                                                </label>
+                                                <button 
+                                                    onClick={() => copyTextToClipboard(hashtags, "Hashtags")} 
+                                                    className="text-[10px] text-brand-600 hover:underline font-bold">
+                                                    <i className="fa-regular fa-copy mr-1"></i>Copy Tags
+                                                </button>
+                                            </div>
+                                            <textarea 
+                                                rows="2"
+                                                value={hashtags}
+                                                onChange={(e) => setHashtags(e.target.value)}
+                                                className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-mono text-slate-700 focus:ring-2 focus:ring-brand-500 outline-none resize-none"
+                                                placeholder="Hashtags..."
+                                            ></textarea>
+                                        </div>
+
+                                        <div>
+                                            <label className="block text-[11px] font-bold text-slate-600 mb-1">Button Call-To-Action (CTA)</label>
+                                            <input 
+                                                type="text" 
+                                                value={cta}
+                                                onChange={(e) => setCta(e.target.value)}
+                                                className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-semibold focus:ring-2 focus:ring-brand-500 outline-none"
+                                            />
+                                        </div>
+                                    </div>
+
+                                    {}
+                                    {/* Platform-Specific Target Audience Keywords Section */}
+                                    <div className="bg-gradient-to-br from-slate-900 to-slate-800 text-white p-5 rounded-2xl border border-slate-700 shadow-md space-y-3">
+                                        <div className="flex items-center justify-between flex-wrap gap-2">
+                                            <div className="flex items-center gap-2">
+                                                <div className="w-7 h-7 rounded-lg bg-brand-500 flex items-center justify-center text-xs text-white font-bold shadow">
+                                                    <i className={`fa-brands ${platformKeywordInfo[selectedPlatform]?.icon || 'fa-bullseye'}`}></i>
+                                                </div>
+                                                <div>
+                                                    <p className="text-xs font-extrabold tracking-wide uppercase text-brand-300">
+                                                        {platformKeywordInfo[selectedPlatform]?.title || "Platform Targeting Keywords"}
+                                                    </p>
+                                                    <span className="text-[10px] text-slate-400 font-semibold">
+                                                        Optimized for {platformKeywordInfo[selectedPlatform]?.badge || selectedPlatform.toUpperCase()}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                            <button 
+                                                onClick={() => copyTextToClipboard(targetKeywords, `${selectedPlatform.toUpperCase()} Keywords`)} 
+                                                className="text-[11px] bg-brand-600 hover:bg-brand-500 text-white font-bold px-3 py-1 rounded-lg transition-all flex items-center gap-1 shadow">
+                                                <i className="fa-regular fa-copy"></i> Copy Keywords
+                                            </button>
+                                        </div>
+
+                                        <p className="text-[11px] text-slate-300 leading-relaxed">
+                                            {platformKeywordInfo[selectedPlatform]?.hint || `Paste these keywords into your ${selectedPlatform.toUpperCase()} Ad campaign manager to reach buyers!`}:
+                                        </p>
+
+                                        <div>
+                                            <textarea 
+                                                rows="2"
+                                                value={targetKeywords}
+                                                onChange={(e) => setTargetKeywords(e.target.value)}
+                                                className="w-full px-3 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-xs font-mono text-emerald-400 focus:ring-2 focus:ring-brand-400 outline-none resize-none"
+                                                placeholder={`${selectedPlatform.toUpperCase()} keywords...`}
+                                            ></textarea>
+                                        </div>
+
+                                        <div className="flex flex-wrap gap-1.5 pt-1">
+                                            {targetKeywords.split(',').map((kw, idx) => kw.trim() && (
+                                                <span key={idx} className="bg-slate-800 border border-slate-700 text-slate-200 text-[10px] px-2.5 py-1 rounded-full font-medium flex items-center gap-1">
+                                                    <i className="fa-solid fa-tag text-brand-400 text-[9px]"></i> {kw.trim()}
+                                                </span>
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    {/* Output Format Chooser & Generation Buttons */}
+                                    <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-3">
+                                        <div className="flex items-center justify-between">
+                                            <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">4. Select Output Visual Format:</p>
+                                            <div className="flex gap-2">
+                                                <button 
+                                                    onClick={() => setAdFormat('image')} 
+                                                    className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${adFormat === 'image' ? 'bg-brand-600 text-white' : 'bg-slate-100 text-slate-700'}`}>
+                                                    <i className="fa-regular fa-image mr-1"></i> Free Image Ad
+                                                </button>
+                                                <button 
+                                                    onClick={() => setAdFormat('video')} 
+                                                    className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${adFormat === 'video' ? 'bg-brand-600 text-white' : 'bg-slate-100 text-slate-700'}`}>
+                                                    <i className="fa-solid fa-crown text-amber-300 mr-1"></i> Pro Video Ad
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                            <button 
+                                                onClick={handleGenerateMedia}
+                                                disabled={isGeneratingMedia}
+                                                className="w-full bg-brand-600 hover:bg-brand-700 text-white font-bold py-3 px-4 rounded-xl shadow-md transition-all text-xs flex items-center justify-center gap-2">
+                                                {isGeneratingMedia ? <i className="fa-solid fa-spinner fa-spin text-sm"></i> : <i className="fa-solid fa-wand-magic-sparkles text-sm"></i>}
+                                                <span>{adFormat === 'video' ? 'Generate Video Ad (Pro)' : 'Generate Image Ad'}</span>
+                                            </button>
+
+                                            <button 
+                                                onClick={handleGenerateVoice}
+                                                disabled={isGeneratingVoice}
+                                                className="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold py-3 px-4 rounded-xl shadow-md transition-all text-xs flex items-center justify-center gap-2">
+                                                {isGeneratingVoice ? <i className="fa-solid fa-spinner fa-spin text-sm"></i> : <i className="fa-solid fa-microphone text-sm"></i>}
+                                                <span>Generate Studio Voiceover</span>
+                                            </button>
+                                        </div>
+
+                                        {audioUrl && (
+                                            <div className="p-2.5 bg-brand-50 border border-brand-200 rounded-xl flex items-center justify-between">
+                                                <div className="flex items-center gap-2">
+                                                    <button onClick={toggleAudio} className="w-7 h-7 rounded-full bg-brand-600 text-white flex items-center justify-center text-xs shadow">
+                                                        <i className={`fa-solid ${isPlayingAudio ? 'fa-pause' : 'fa-play'}`}></i>
+                                                    </button>
+                                                    <span className="text-xs font-bold text-slate-800">AI Voiceover Audio Ready</span>
+                                                </div>
+                                                <audio ref={audioRef} src={audioUrl} onEnded={() => setIsPlayingAudio(false)} className="hidden" />
+                                            </div>
+                                        )}
+                                    </div>
+
+                                </div>
+
+                                {/* Right Phone Mockup Preview */}
+                                <div className="lg:col-span-5 flex flex-col items-center">
+                                    <div className="w-full max-w-sm sticky top-20">
+                                        <div className="flex items-center justify-between mb-2 px-1">
+                                            <span className="text-xs font-extrabold uppercase tracking-wide text-slate-700 flex items-center gap-1.5">
+                                                <span className="w-2.5 h-2.5 rounded-full bg-green-500 animate-ping"></span>
+                                                {selectedPlatform.toUpperCase()} {adFormat.toUpperCase()} PREVIEW
+                                            </span>
+                                            <button onClick={copyFullAd} className="text-xs bg-white text-slate-800 border border-slate-300 px-3 py-1 rounded-lg font-bold hover:bg-slate-50 transition-all shadow-sm flex items-center gap-1">
+                                                <i className="fa-regular fa-copy text-brand-600"></i> Copy Full Ad Package
+                                            </button>
+                                        </div>
+
+                                        {/* Phone Frame Mockup */}
+                                        <div className="bg-slate-900 p-3.5 rounded-[36px] shadow-2xl border-2 border-slate-700">
+                                            
+                                            <div className="bg-white rounded-[24px] overflow-hidden flex flex-col justify-between min-h-[480px] text-xs">
+                                                
+                                                {/* Header Bar */}
+                                                <div className="p-3 border-b border-slate-100 flex items-center justify-between">
+                                                    <div className="flex items-center gap-2">
+                                                        <div className="w-7 h-7 rounded-full bg-brand-600 text-white font-black flex items-center justify-center text-[10px]">
+                                                            EDO
+                                                        </div>
+                                                        <div>
+                                                            <p className="font-bold leading-none text-slate-900">{productName.toLowerCase().replace(/\s+/g, '')}</p>
+                                                            <p className="text-[9px] text-slate-400 font-semibold">Sponsored • {businessCategory}</p>
+                                                        </div>
+                                                    </div>
+                                                    <i className="fa-solid fa-ellipsis text-slate-400"></i>
+                                                </div>
+
+                                                {/* Visual Media Graphic Area */}
+                                                <div className="relative bg-slate-100 flex-grow flex items-center justify-center overflow-hidden min-h-[220px]">
+                                                    <img 
+                                                        src={creativePreview} 
+                                                        alt="Ad Creative" 
+                                                        className="w-full h-full object-cover max-h-[260px]"
+                                                    />
+                                                    
+                                                    {/* Offer Overlay Badge */}
+                                                    {offerDiscount && (
+                                                        <div className="absolute top-2 left-2 bg-brand-600 text-white font-extrabold text-[10px] px-2.5 py-1 rounded-md shadow">
+                                                            {offerDiscount}
+                                                        </div>
+                                                    )}
+
+                                                    {/* Play Icon if Video Ad */}
+                                                    {adFormat === 'video' && (
+                                                        <div className="absolute inset-0 bg-black/30 flex items-center justify-center">
+                                                            <div className="w-12 h-12 rounded-full bg-white/90 text-brand-600 flex items-center justify-center shadow-lg">
+                                                                <i className="fa-solid fa-play text-base ml-1"></i>
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                </div>
+
+                                                {/* Call to Action Bar */}
+                                                <div className="bg-brand-600 text-white px-3.5 py-2.5 flex items-center justify-between font-bold text-xs">
+                                                    <span>{cta}</span>
+                                                    <i className="fa-solid fa-chevron-right text-xs"></i>
+                                                </div>
+
+                                                {/* Copy Body */}
+                                                <div className="p-3 space-y-1.5">
+                                                    <p className="font-bold text-slate-900 line-clamp-1">{adHeadline}</p>
+                                                    <p className="text-slate-600 text-[11px] line-clamp-2 leading-tight">{adDescription}</p>
+                                                    <p className="text-brand-600 font-mono text-[10px] line-clamp-2">{hashtags}</p>
+                                                    
+                                                    {/* Targeting Keywords Tag pill inside preview */}
+                                                    <div className="pt-1.5 border-t border-slate-100 flex items-center gap-1 text-[9px] text-slate-500 font-semibold">
+                                                        <i className="fa-solid fa-bullseye text-brand-600"></i>
+                                                        <span className="truncate">{platformKeywordInfo[selectedPlatform]?.badge || selectedPlatform}: {targetKeywords}</span>
+                                                    </div>
+                                                </div>
+
+                                            </div>
+                                        </div>
+
+                                    </div>
+                                </div>
+
+                            </div>
+                        </main>
+                    )}
+
+                    {/* Pricing Tab */}
+                    {activeTab === 'pricing' && (
+                        <div className="max-w-5xl mx-auto px-4 py-12 flex-grow w-full">
+                            <div className="text-center mb-10">
+                                <h2 className="text-2xl sm:text-3xl font-black text-slate-900">Simple & Transparent Pricing</h2>
+                                <p className="text-xs sm:text-sm text-slate-500 mt-2 max-w-xl mx-auto">
+                                    Start with 15 Days Free Trial for Image Ads & Meta Keywords (1 Ad/Day). Upgrade to Pro to unlock Unlimited AI Video Ads!
+                                </p>
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                
+                                {/* Free Trial Plan */}
+                                <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between hover:border-brand-300 transition-all">
+                                    <div>
+                                        <span className="text-[10px] uppercase font-bold text-brand-600 tracking-wider">Free Trial</span>
+                                        <h3 className="font-extrabold text-lg text-slate-900">15-Day Free Trial</h3>
+                                        <div className="text-3xl font-black text-slate-900 my-2">$0 <span className="text-xs font-normal text-slate-400">/ 15 Days</span></div>
+                                        <ul className="text-xs text-slate-600 space-y-2.5 mb-6">
+                                            <li><i className="fa-solid fa-check text-green-500 mr-1.5"></i> 5 Bonus Free Ads upfront</li>
+                                            <li><i className="fa-solid fa-check text-green-500 mr-1.5"></i> 1 Image Ad per day (15 Days)</li>
+                                            <li><i className="fa-solid fa-check text-green-500 mr-1.5"></i> Meta Target Keywords Generator</li>
+                                            <li><i className="fa-solid fa-check text-green-500 mr-1.5"></i> Platform-Specific Hashtags</li>
+                                            <li><i className="fa-solid fa-check text-green-500 mr-1.5"></i> All 8 Social Platforms</li>
+                                            <li className="text-slate-400"><i className="fa-solid fa-xmark text-slate-300 mr-2"></i> No Video Ads (Pro Only)</li>
+                                        </ul>
+                                    </div>
+                                    <button onClick={() => { if(!isLoggedIn) setActiveModal('auth'); else setActiveTab('creator'); }} className="w-full py-2.5 bg-slate-100 text-slate-800 font-bold text-xs rounded-xl hover:bg-slate-200 transition-all">
+                                        {isLoggedIn ? 'Active Free Plan' : 'Start Free Trial'}
+                                    </button>
+                                </div>
+
+                                {/* Pro Monthly Plan */}
+                                <div className="bg-brand-600 text-white p-6 rounded-2xl shadow-xl flex flex-col justify-between relative scale-[1.03] border-2 border-brand-500">
+                                    <div className="absolute -top-3 right-6 bg-amber-400 text-slate-900 font-black text-[10px] px-3 py-0.5 rounded-full uppercase tracking-wider">Most Popular</div>
+                                    <div>
+                                        <span className="text-[10px] uppercase font-bold text-blue-200 tracking-wider">Pro Monthly</span>
+                                        <h3 className="font-extrabold text-xl">EDO Pro</h3>
+                                        <div className="text-3xl font-black my-2">$15 <span className="text-xs font-normal text-blue-100">/ month (or Rs. 2,999)</span></div>
+                                        <ul className="text-xs text-blue-100 space-y-2.5 mb-6">
+                                            <li><i className="fa-solid fa-check text-white mr-1.5"></i> <strong>Unlimited AI Video Ads</strong></li>
+                                            <li><i className="fa-solid fa-check text-white mr-1.5"></i> Unlimited AI Image Ads</li>
+                                            <li><i className="fa-solid fa-check text-white mr-1.5"></i> Meta & Viral Target Keywords</li>
+                                            <li><i className="fa-solid fa-check text-white mr-1.5"></i> AI Studio Voiceover Audio</li>
+                                            <li><i className="fa-solid fa-check text-white mr-1.5"></i> Instant High-Res Downloads</li>
+                                        </ul>
+                                    </div>
+                                    <button onClick={() => showToast("Redirecting to Pro Payment Gateway...")} className="w-full py-2.5 bg-white text-brand-600 font-black text-xs rounded-xl shadow hover:bg-blue-50 transition-all">
+                                        Upgrade to Pro ($15)
+                                    </button>
+                                </div>
+
+                                {/* Agency / Business Plan */}
+                                <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between hover:border-brand-300 transition-all">
+                                    <div>
+                                        <span className="text-[10px] uppercase font-bold text-slate-500 tracking-wider">Business</span>
+                                        <h3 className="font-extrabold text-lg text-slate-900">Agency Pro</h3>
+                                        <div className="text-3xl font-black text-slate-900 my-2">$39 <span className="text-xs font-normal text-slate-400">/ month</span></div>
+                                        <ul className="text-xs text-slate-600 space-y-2.5 mb-6">
+                                            <li><i className="fa-solid fa-check text-green-500 mr-1.5"></i> Unlimited Video & Image Ads</li>
+                                            <li><i className="fa-solid fa-check text-green-500 mr-1.5"></i> Meta Keywords Strategy Suite</li>
+                                            <li><i className="fa-solid fa-check text-green-500 mr-1.5"></i> Commercial Usage License</li>
+                                            <li><i className="fa-solid fa-check text-green-500 mr-1.5"></i> Custom Watermark & Branding</li>
+                                        </ul>
+                                    </div>
+                                    <button onClick={() => showToast("Redirecting to Agency Plan...")} className="w-full py-2.5 bg-slate-900 text-white font-bold text-xs rounded-xl hover:bg-slate-800 transition-all">Get Agency Plan</button>
+                                </div>
+
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Modals Container */}
+                    {activeModal && (
+                        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                            <div className="bg-white max-w-md w-full rounded-2xl p-6 shadow-2xl relative border border-slate-200 animate-in fade-in zoom-in-95 duration-200">
+                                
+                                <button 
+                                    onClick={() => setActiveModal(null)} 
+                                    className="absolute top-4 right-4 text-slate-400 hover:text-slate-700 w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center transition-colors">
+                                    <i className="fa-solid fa-xmark text-sm"></i>
+                                </button>
+
+                                {/* Authentication Modal */}
+                                {activeModal === 'auth' && (
+                                    <div>
+                                        <div className="text-center mb-5">
+                                            <div className="w-12 h-12 bg-brand-600 text-white font-black rounded-2xl flex items-center justify-center text-xl mx-auto mb-2 shadow-lg shadow-brand-500/20">
+                                                EDO
+                                            </div>
+                                            <h3 className="text-xl font-black text-slate-900">Log In to Edo.ai</h3>
+                                            <p className="text-xs text-slate-500 mt-1">Get 5 Initial Free Ad Credits on signup!</p>
+                                        </div>
+
+                                        <div className="flex border-b border-slate-200 mb-4 text-xs font-bold">
+                                            <button 
+                                                onClick={() => setAuthMethod('google')} 
+                                                className={`flex-1 py-2 border-b-2 transition-all ${authMethod === 'google' ? 'border-brand-600 text-brand-600' : 'border-transparent text-slate-400'}`}>
+                                                Google
+                                            </button>
+                                            <button 
+                                                onClick={() => setAuthMethod('email')} 
+                                                className={`flex-1 py-2 border-b-2 transition-all ${authMethod === 'email' ? 'border-brand-600 text-brand-600' : 'border-transparent text-slate-400'}`}>
+                                                Email
+                                            </button>
+                                            <button 
+                                                onClick={() => setAuthMethod('phone')} 
+                                                className={`flex-1 py-2 border-b-2 transition-all ${authMethod === 'phone' ? 'border-brand-600 text-brand-600' : 'border-transparent text-slate-400'}`}>
+                                                Phone Number
+                                            </button>
+                                        </div>
+
+                                        {authMethod === 'google' && (
+                                            <div className="space-y-3">
+                                                <button 
+                                                    onClick={() => handleLogin('google')}
+                                                    className="w-full py-3 bg-white border border-slate-300 hover:border-brand-500 text-slate-700 font-bold text-xs rounded-xl shadow-sm transition-all flex items-center justify-center gap-2">
+                                                    <i className="fa-brands fa-google text-red-500 text-base"></i>
+                                                    <span>Continue with Google</span>
+                                                </button>
+                                            </div>
+                                        )}
+
+                                        {authMethod === 'email' && (
+                                            <div className="space-y-3">
+                                                <div>
+                                                    <label className="block text-[11px] font-bold text-slate-600 mb-1">Email Address</label>
+                                                    <input 
+                                                        type="email" 
+                                                        value={inputEmail}
+                                                        onChange={(e) => setInputEmail(e.target.value)}
+                                                        placeholder="yourname@example.com" 
+                                                        className="w-full px-3 py-2.5 border rounded-xl text-xs font-medium outline-none focus:ring-2 focus:ring-brand-500"
+                                                    />
+                                                </div>
+                                                <button 
+                                                    onClick={() => handleLogin('email')}
+                                                    className="w-full py-2.5 bg-brand-600 hover:bg-brand-700 text-white font-bold text-xs rounded-xl shadow transition-all">
+                                                    Log In with Email
+                                                </button>
+                                            </div>
+                                        )}
+
+                                        {authMethod === 'phone' && (
+                                            <div className="space-y-3">
+                                                <div>
+                                                    <label className="block text-[11px] font-bold text-slate-600 mb-1">Mobile Phone Number</label>
+                                                    <input 
+                                                        type="tel" 
+                                                        value={inputPhone}
+                                                        onChange={(e) => setInputPhone(e.target.value)}
+                                                        placeholder="+92 300 1234567" 
+                                                        className="w-full px-3 py-2.5 border rounded-xl text-xs font-medium outline-none focus:ring-2 focus:ring-brand-500"
+                                                    />
+                                                </div>
+                                                <button 
+                                                    onClick={() => handleLogin('phone')}
+                                                    className="w-full py-2.5 bg-brand-600 hover:bg-brand-700 text-white font-bold text-xs rounded-xl shadow transition-all">
+                                                    Log In with Mobile Number
+                                                </button>
+                                            </div>
+                                        )}
+
+                                        <p className="text-[10px] text-center text-slate-400 mt-4">By logging in, you agree to Edo.ai Privacy Terms.</p>
+                                    </div>
+                                )}
+
+                                {/* Pro Upgrade Modal */}
+                                {activeModal === 'pro_upgrade' && (
+                                    <div className="text-center py-2">
+                                        <div className="w-12 h-12 bg-amber-100 text-amber-600 rounded-full flex items-center justify-center text-xl mx-auto mb-3">
+                                            <i className="fa-solid fa-crown"></i>
+                                        </div>
+                                        <h3 className="text-lg font-black text-slate-900 mb-1">Video Ads are a PRO Feature!</h3>
+                                        <p className="text-xs text-slate-600 mb-4 leading-relaxed">
+                                            Free trial plan supports <strong>1 Image Ad per day</strong>. Upgrade to <strong>EDO Pro</strong> to unlock unlimited AI Video Ads & Voiceovers!
+                                        </p>
+                                        <div className="space-y-2">
+                                            <button 
+                                                onClick={() => { setActiveModal(null); setActiveTab('pricing'); }} 
+                                                className="w-full py-2.5 bg-brand-600 hover:bg-brand-700 text-white font-bold text-xs rounded-xl shadow">
+                                                Upgrade to Pro ($15 / Mo)
+                                            </button>
+                                            <button 
+                                                onClick={() => { setActiveModal(null); setAdFormat('image'); }} 
+                                                className="w-full py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs rounded-xl">
+                                                Continue with Free Image Ads
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Static Information Modals */}
+                                {activeModal === 'about' && (
+                                    <div>
+                                        <h3 className="text-lg font-black text-slate-900 mb-2">About Edo.ai</h3>
+                                        <p className="text-xs text-slate-600 leading-relaxed mb-4">
+                                            Edo.ai is an intelligent ad creation platform for business owners, agencies, and online marketers. Create high-converting image & video ads with AI copywriting, Meta Ads interest targeting keywords, and platform-specific hashtags.
+                                        </p>
+                                        <button onClick={() => setActiveModal(null)} className="w-full py-2 bg-brand-600 text-white font-bold text-xs rounded-xl">Close</button>
+                                    </div>
+                                )}
+
+                                {activeModal === 'privacy' && (
+                                    <div>
+                                        <h3 className="text-lg font-black text-slate-900 mb-2">Privacy Policy</h3>
+                                        <p className="text-xs text-slate-600 leading-relaxed mb-4">
+                                            Your uploaded product images and marketing data are strictly protected. Edo.ai does not share or sell your business content to any third parties.
+                                        </p>
+                                        <button onClick={() => setActiveModal(null)} className="w-full py-2 bg-brand-600 text-white font-bold text-xs rounded-xl">I Understand</button>
+                                    </div>
+                                )}
+
+                                {activeModal === 'features' && (
+                                    <div>
+                                        <h3 className="text-lg font-black text-slate-900 mb-3">Edo.ai Studio Features</h3>
+                                        <ul className="text-xs text-slate-600 space-y-2 mb-4">
+                                            <li className="flex items-center gap-2"><i className="fa-solid fa-check text-brand-600"></i> Meta Ads Interest Targeting Keywords Generator</li>
+                                            <li className="flex items-center gap-2"><i className="fa-solid fa-check text-brand-600"></i> Maximum Platform-Optimized Hashtags Generator</li>
+                                            <li className="flex items-center gap-2"><i className="fa-solid fa-check text-brand-600"></i> Product Photo Upload & HD Image Ad Creation</li>
+                                            <li className="flex items-center gap-2"><i className="fa-solid fa-check text-brand-600"></i> AI Video Ad Generator (Pro)</li>
+                                            <li className="flex items-center gap-2"><i className="fa-solid fa-check text-brand-600"></i> Studio Voiceover Audio Generation</li>
+                                        </ul>
+                                        <button onClick={() => setActiveModal(null)} className="w-full py-2 bg-brand-600 text-white font-bold text-xs rounded-xl">Got It</button>
+                                    </div>
+                                )}
+
+                                {activeModal === 'contact' && (
+                                    <div>
+                                        <h3 className="text-lg font-black text-slate-900 mb-2">Contact Edo Support</h3>
+                                        <p className="text-xs text-slate-500 mb-3">Questions? Send us a message and our team will assist you.</p>
+                                        <div className="space-y-2 mb-4">
+                                            <input type="email" placeholder="Your Email..." className="w-full px-3 py-2 border rounded-xl text-xs outline-none focus:ring-2 focus:ring-brand-500" />
+                                            <textarea rows="3" placeholder="Message..." className="w-full px-3 py-2 border rounded-xl text-xs outline-none focus:ring-2 focus:ring-brand-500 resize-none"></textarea>
+                                        </div>
+                                        <button onClick={() => { setActiveModal(null); showToast("Message sent successfully!"); }} className="w-full py-2 bg-brand-600 text-white font-bold text-xs rounded-xl">Send Message</button>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Footer */}
+                    <footer className="bg-white border-t border-slate-200 mt-auto py-6">
+                        <div className="max-w-7xl mx-auto px-4 sm:px-6 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-500">
+                            <div className="flex items-center gap-2">
+                                <div className="w-6 h-6 bg-brand-600 text-white font-black rounded-lg flex items-center justify-center text-[10px]">
+                                    EDO
+                                </div>
+                                <span className="font-extrabold text-slate-800">Edo.ai</span>
+                                <span>© {new Date().getFullYear()} All rights reserved.</span>
+                            </div>
+
+                            <div className="flex items-center gap-4 text-xs font-semibold">
+                                <button onClick={() => setActiveModal('about')} className="hover:text-brand-600">About</button>
+                                <button onClick={() => setActiveModal('features')} className="hover:text-brand-600">Features</button>
+                                <button onClick={() => setActiveModal('privacy')} className="hover:text-brand-600">Privacy Policy</button>
+                                <button onClick={() => setActiveModal('contact')} className="hover:text-brand-600">Contact</button>
+                            </div>
+                        </div>
+                    </footer>
+
+                </div>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
